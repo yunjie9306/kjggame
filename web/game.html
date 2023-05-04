@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, shrink-to-fit=no">
+    <meta charset="UTF-8">
+    <title>燃烧卡路里</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        #startScreen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .startScreenWrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        #background-container {
+            position: absolute;
+            width: 100%;
+            height: calc(100% - 10%);
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        #background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: url('images/background.png') repeat-x;
+            background-size: cover;
+            animation: scroll 10s linear infinite;
+        }
+
+        #ground-container {
+            position: absolute;
+            width: 100%;
+            height: 10%;
+            bottom: 0;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        #ground {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 100%;
+            background: url('images/ground.png') no-repeat center bottom;
+            background-size: auto 100%;
+        }
+
+        @keyframes scroll {
+            0% {
+                background-position-x: 0%;
+            }
+
+            100% {
+                background-position-x: 70%;
+            }
+        }
+
+        #gameLogo {
+            background-image: url('images/logo.png');
+            width: 80vw;
+            height: 20vw;
+            background-size: cover;
+            display: block;
+            margin-bottom: 5vw;
+            /* 调整这个值以设置 Logo 和按钮之间的间距 */
+        }
+
+        #gamePlayButton {
+            background-image: url('images/game_play_button.png');
+            width: 20vw;
+            height: 0;
+            padding-bottom: 5.8vw;
+            background-size: cover;
+            display: block;
+            margin-top: 2vw;
+            border: none;
+            outline: none;
+        }
+
+        #returnButton {
+            background-image: url('images/return_button.png');
+            width: 6vw;
+            height: 2.5vw;
+            background-size: cover;
+            display: block;
+            margin-top: 2vw;
+            border: none;
+            outline: none;
+        }
+
+        #startButton {
+            background-image: url('images/start_button.png');
+            width: 20vw;
+            height: 0;
+            padding-bottom: 5.8vw;
+            background-size: cover;
+            display: block;
+            margin-top: 2vw;
+            border: none;
+            outline: none;
+        }
+
+        #resetButton {
+            background-image: url('images/reset_button.png');
+            width: 200px;
+            height: 60px;
+            background-size: cover;
+            display: none;
+            position: absolute;
+            left: 50%;
+            top: 80%;
+            transform: translate(-50%, -50%);
+            border: none;
+            outline: none;
+        }
+
+        #score {
+            background-image: url('images/score.png');
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: #ffffff;
+            /* 修改此值以更改分数的颜色 */
+            font-size: 24px;
+            /* 添加字体大小，您可以根据需要调整 */
+            padding: 5px 10px;
+            /* 添加内边距以调整背景图片和文字之间的空间 */
+        }
+
+        #gamePlayScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        #gamePlayImage {
+            display: block;
+            margin: 0 auto;
+            margin-bottom: 20px;
+            /* 调整这个值以设置游戏玩法图片和返回按钮之间的间距 */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="startScreen">
+        <div class="startScreenWrapper">
+            <div id="gameLogo"></div>
+            <button id="startButton"></button>
+            <button id="gamePlayButton"></button>
+        </div>
+    </div>
+
+    <div id="scaleCountDisplay" style="position: fixed; top: 50px; right: 10px; color: #ffffff; font-size: 24px;"></div>
+
+    <div id="score" style="display: none;"></div>
+    <button id="resetButton"></button>
+
+    <div id="gamePlayScreen" style="display: none;">
+        <img id="gamePlayImage" src="images/game_play_image.png" style="max-width: 80%; max-height: 80%;">
+        <button id="returnButton">返回</button>
+    </div>
+
+    <img id="characterSprite" src="images/character_sprite.png" style="display: none;">
+    <img id="ballImg" src="images/ball.png" style="display: none;">
+    <img id="characterEnlargeImg" src="images/character_enlarge.png" style="display: none;">
+    <img id="powerupsImg" src="images/powerups.png" style="display: none;">
+    <img id="characterJumpImg" src="images/character_jump.png" style="display: none;">
+    <img id="characterEnlargeJumpImg" src="images/characterEnlargeJumpImg.png" style="display: none;">
+    <audio id="jumpSound" src="sounds/jump.mp3" type="audio/mpeg"></audio>
+    <audio id="touchBallSound" src="sounds/touch_ball.mp3" type="audio/mpeg"></audio>
+    <audio id="touchPowerupSound" src="sounds/touch_powerup.mp3" type="audio/mpeg"></audio>
+    <audio id="backgroundMusic" src="sounds/backgroundMusic.mp3" type="audio/mpeg"></audio>
+    <audio id="gameOverMusic" src="sounds/gameOverMusic.mp3" type="audio/mpeg"></audio>
+
+    <div id="background-container">
+        <div id="background"></div>
+        <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+    </div>
+    <div id="ground-container">
+        <div id="ground"></div>
+    </div>
+    <script>
+      function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    character.y = canvas.height - groundHeight - character.height * character.scale;
+
+    // 重新创建小球
+    balls = [];
+    for (let i = 0; i < ballCount; i++) {
+        createBall();
+    }
+}
+
+        // 获取图像元素
+        const characterSprite = document.getElementById('characterSprite');
+        const ballImg = document.getElementById('ballImg');
+        const backgroundImage = document.getElementById('backgroundImage');
+        const groundImg = document.getElementById('groundImg');
+        const characterEnlargeImg = document.getElementById('characterEnlargeImg');
+        const powerupsImg = document.getElementById('powerupsImg');
+        const characterEnlargeJumpImg = document.getElementById('characterEnlargeJumpImg');
+        const gameOverScoreBackground = new Image();
+
+        const gamePlayButton = document.getElementById('gamePlayButton');
+        const returnButton = document.getElementById('returnButton');
+        const gamePlayScreen = document.getElementById('gamePlayScreen');
+        const startScreen = document.getElementById('startScreen');
+
+        // 获取游戏画布和上下文
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        document.body.appendChild(canvas);
+
+
+        // 定义游戏中的一些常量和变量
+        const characterWidth = 64;
+        const characterHeight = 128;
+        const groundContainer = document.getElementById("ground-container");
+        const groundContainerRect = groundContainer.getBoundingClientRect();
+        const groundHeight = groundContainerRect.height;
+
+        const ballCount = 10;
+        const powerupCount = 5; // 可以根据需要调整道具的数量
+        const startButton = document.getElementById('startButton');// 获取 ID 为 "startButton" 的 HTML 元素并将其赋值给名为 "startButton" 的变量
+        const resetButton = document.getElementById('resetButton');
+        const scoreElement = document.getElementById('score');
+        let score = 0;//这个变量用于跟踪游戏分数
+
+        let scaleCount = 0;//这个变量用于跟踪角色被放大的次数。
+        let scaleDownCount = 0;//记录角色缩小的次数
+        let intervalId;
+        let isGameOver = true;//这个变量用于表示游戏是否已结束。
+        let animationFrameId;//用于存储 requestAnimationFrame 方法的返回值，以便稍后可以通过调用 cancelAnimationFrame 方法来停止动画。
+        let powerups = [];//用于存储游戏中的道具或者增益物品。
+
+        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
+
+
+        gamePlayButton.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            gamePlayScreen.style.display = 'block';
+        });
+
+        returnButton.addEventListener('click', () => {
+            gamePlayScreen.style.display = 'none';
+            startScreen.style.display = 'block';
+        });
+
+        // 开始游戏按钮事件监听
+        startButton.addEventListener('click', () => {
+            startGame();
+        });
+
+        // 重新开始按钮事件
+        resetButton.addEventListener('click', () => {
+            resetGame();
+        });
+        // 角色对象
+        let character = {
+            x: 0,
+            y: canvas.height - groundHeight - characterHeight,
+            speed: 5,
+            width: 64,
+            height: 128,
+            vy: 0,
+            gravity: 0.5,
+            jumpStrength: 12,
+            jumping: false,
+            isEnlarged: false,
+            scale: 1,
+            scaleTimer: null,
+            image: characterSprite,
+            animation: {
+                frameWidth: 225.5,
+                frameHeight: 300,
+                totalFrames: 4,
+                currentFrame: 0,
+                frameDuration: 15, // 每个帧显示的时间（游戏刷新率的帧数）
+                frameCounter: 0,
+            },
+        };
+
+        // 初始化小球数组
+        let balls = [];
+        for (let i = 0; i < ballCount; i++) {
+            createBall();
+        }
+        window.addEventListener('orientationchange', () => {
+            setTimeout(resizeCanvas, 100);
+        });
+        window.addEventListener('resize', resizeCanvas);
+
+        // 初始化游戏
+        function init() {
+            startButton.style.display = 'block';
+            resetButton.style.display = 'none';
+            resizeCanvas();
+        }
+        // 开始游戏
+        function startGame() {
+            // 隐藏开始界面
+            const startScreen = document.getElementById('startScreen');
+            startScreen.style.display = 'none';
+            // 先调整画布大小
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(resizeCanvas, 100);
+            });
+            startButton.style.display = 'none';
+            resetButton.style.display = 'none';
+            scoreElement.style.display = 'block';
+            score = 0;
+            scoreElement.innerText = score;
+            character.jumping = false;
+            character.scale = 1;
+            character.image = characterSprite;
+            scaleCount = 0;
+            scaleDownCount = 0
+            backgroundMusic.loop = true;
+            backgroundMusic.volume = 0.5; // 调整音量，根据需要设置 0 到 1 之间的值
+            backgroundMusic.play();
+            for (let i = 0; i < powerupCount; i++) {
+                if (Math.random() < 0.5) { // 可以根据需要调整道具出现概率
+                    createPowerup();
+                }
+            }
+            if (!intervalId) {
+                isGameOver = false;
+                intervalId = setInterval(() => {
+                    score++;
+                    scoreElement.innerText = score;
+                }, 500);
+            }
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+
+            update();
+        }
+
+        function updateScaleCountDisplay() {
+    document.getElementById('scaleCountDisplay').innerHTML = `Scale Count: ${scaleCount}`;
+}
+
+        function createBall() {
+    let radius = Math.random() * 10 + 10;
+    balls.push({
+        x: Math.random() * (canvas.width - radius * 2) + radius,
+        y: Math.random() * (canvas.height - groundHeight - radius * 2) + radius,
+        radius: radius,
+        vx: (Math.random() * 4) - 2,
+        vy: (Math.random() * 4) - 2,
+        color: `hsl(${Math.random() * 360}, 50%, 50%)`
+    });
+}
+
+
+        // 创建新的道具
+        function createPowerup() {
+            let size = Math.random() * 10 + 30; // 可以根据需要调整道具的大小
+            powerups.push({
+                x: Math.random() * (canvas.width - size * 2) + size,
+                y: Math.random() * (canvas.height - groundHeight - size * 2) + size,
+                width: size,
+                height: size,
+                vx: (Math.random() * 4) - 2, // 可以根据需要调整道具的速度
+                vy: (Math.random() * 4) - 2,
+                color: `hsl(${Math.random() * 360}, 50%, 50%)`,
+                duration: 5000, // 可以根据需要调整道具的停留时间
+                spawnTime: Date.now()
+            });
+        }
+        // 绘制角色
+        function drawCharacter() {
+            ctx.save();
+            const animation = character.animation;
+            if (character.jumping) {
+                const jumpImage = scaleCount > 0 ? characterEnlargeJumpImg : characterJumpImg;
+                ctx.drawImage(
+                    jumpImage,
+                    0,
+                    0,
+                    jumpImage.width,
+                    jumpImage.height,
+                    character.x,
+                    character.y,
+                    character.width * character.scale,
+                    character.height * character.scale
+                );
+            } else {
+                // 使用精灵表绘制角色
+                const sx = animation.currentFrame * animation.frameWidth;
+                const sy = 0;
+
+                ctx.drawImage(
+                    character.image,
+                    sx,
+                    sy,
+                    animation.frameWidth,
+                    animation.frameHeight,
+                    character.x,
+                    character.y,
+                    character.width * character.scale,
+                    character.height * character.scale
+                );
+            }
+            ctx.restore();
+            handleLanding();
+        }
+
+        // 用于在角色落地时判断 characterSprite 还是 characterEnlargeImg
+        function handleLanding() {
+            if (character.y === canvas.height - groundHeight - characterHeight * character.scale) {
+                character.image = scaleCount > 0 ? characterEnlargeImg : characterSprite;
+                character.jumping = false;
+            }
+        }
+
+        function updateCharacterAnimation() {
+            const animation = character.animation;
+            animation.frameCounter++;
+
+            if (animation.frameCounter >= animation.frameDuration) {
+                animation.currentFrame = (animation.currentFrame + 1) % animation.totalFrames;
+                animation.frameCounter = 0;
+            }
+        }
+
+
+        function gameLoop() {
+            updateCharacterAnimation();
+        }
+
+        // 绘制得分
+        function drawScore() {
+            ctx.font = 'bold 24px Arial';
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'right';
+            ctx.fillText(`分数：${score}`, canvas.width - 10, 30);
+        }
+
+        // 绘制小球
+        function drawBalls() {
+            for (let ball of balls) {
+                ctx.drawImage(ballImg, ball.x - ball.radius, ball.y - ball.radius, ball.radius * 2, ball.radius * 2);
+            }
+        }
+        // 绘制道具
+        function drawPowerups() {
+            for (let powerup of powerups) {
+                ctx.beginPath();
+                ctx.drawImage(powerupsImg, powerup.x - powerup.width / 2, powerup.y - powerup.height / 2, powerup.width, powerup.height);
+            }
+        }
+        // 更新小球位置
+        function updateBalls() {
+            for (let ball of balls) {
+                // 根据玩家的分数调整小球速度
+                let speedMultiplier = 1 + Math.floor(score / 10) * 0.5;
+                ball.x += ball.vx * speedMultiplier;
+                ball.y += ball.vy * speedMultiplier;
+
+                // 碰到边缘时反弹
+                if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+                    ball.vx = -ball.vx;
+                }
+                if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height - groundHeight) {
+                    ball.vy = -ball.vy;
+                }
+            }
+        }
+        // 更新道具位置
+        function updatePowerups() {
+            for (let powerup of powerups) {
+                powerup.x += powerup.vx;
+                powerup.y += powerup.vy;
+
+                // 碰到边缘时反弹
+                if (powerup.x - powerup.width / 2 < 0 || powerup.x + powerup.width / 2 > canvas.width) {
+                    powerup.vx = -powerup.vx;
+                }
+                if (powerup.y - powerup.height / 2 < 0 || powerup.y + powerup.height / 2 > canvas.height - groundHeight) {
+                    powerup.vy = -powerup.vy;
+                }
+            }
+        }
+
+// 检查角色与小球的碰撞
+function checkCollision() {
+    for (let i = balls.length - 1; i >= 0; i--) {
+        let ball = balls[i];
+        let dx = character.x + characterWidth * character.scale / 2 - ball.x;
+        let dy = character.y + characterHeight * character.scale / 2 - ball.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < ball.radius + Math.max(characterWidth, characterHeight) * character.scale / 2) {
+            scaleCount++; // 角色碰触球时，scaleCount 增加 1
+            updateScaleCountDisplay();
+            if (scaleCount === 2) {
+                gameOver();
+            } else {
+                character.scale *= 2;
+                character.image = characterEnlargeImg;
+            }
+
+            balls.splice(i, 1); // 角色碰触球，球消失
+            createBall(); // 生成新球
+
+            touchBallSound.currentTime = 0;
+            touchBallSound.play();
+            return; // 碰撞后，跳出循环，避免多次碰撞检测
+        }
+    }
+
+    for (let i = powerups.length - 1; i >= 0; i--) {
+        let powerup = powerups[i];
+        let dx = character.x + characterWidth * character.scale / 2 - powerup.x - powerup.width / 2;
+        let dy = character.y + characterHeight * character.scale / 2 - powerup.y - powerup.height / 2;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < Math.max(powerup.width, powerup.height) / 2 + Math.max(characterWidth, characterHeight) * character.scale / 2) {
+            if (scaleCount > -2) { // 添加此行以检查 scaleCount 是否已经达到 -2
+                scaleCount--; // 角色碰触道具时，scaleCount 减少 1
+                updateScaleCountDisplay();
+                character.scale /= 2;
+                character.image = characterSprite;
+            }
+
+            powerups.splice(i, 1); // 角色碰触道具，道具消失
+            touchPowerupSound.currentTime = 0;
+            touchPowerupSound.play();
+        }
+    }
+}
+
+function displayHighScore() {
+    ctx.fillStyle = 'white';
+    ctx.font = '24px Arial';
+    ctx.fillText(`历史最高:        ${highScore}`, canvas.width / 2 - 80, canvas.height / 2 + 60);
+}
+        // 游戏结束
+        function gameOver() {
+            clearInterval(intervalId);
+            resetButton.style.display = 'block';
+            isGameOver = true;
+            intervalId = null;
+            if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('highScore', highScore); // 将最高分保存到本地存储
+    }
+
+    displayHighScore();
+            // 加载背景图片
+            if (!gameOverScoreBackground.src) {
+                gameOverScoreBackground.src = 'images/game_over_score.png';
+                gameOverScoreBackground.onload = () => {
+                    window.requestAnimationFrame(() => {
+                        displayGameOverScore(gameOverScoreBackground);
+                    });
+                };
+            } else {
+                window.requestAnimationFrame(() => {
+                    displayGameOverScore(gameOverScoreBackground);
+                });
+            }
+            // 停止播放背景音乐并播放游戏结束音乐
+            backgroundMusic.pause();
+            gameOverMusic.play();
+            gameOverMusic.addEventListener('ended', () => {
+                // 播放一次后停止
+                gameOverMusic.pause();
+            });
+        }
+
+
+        // 显示游戏结束分数
+        function displayGameOverScore(gameOverScoreBackground) {
+
+            // 计算图片大小和位置
+            const imgWidth = gameOverScoreBackground.width;
+            const imgHeight = gameOverScoreBackground.height;
+            const imgX = (canvas.width - imgWidth) / 2;
+            const imgY = (canvas.height - imgHeight) / 2;
+
+            // 在画布上绘制背景图片
+            ctx.drawImage(gameOverScoreBackground, imgX, imgY, imgWidth, imgHeight);
+
+            // 设置文本样式
+            ctx.font = 'bold 48px Arial';
+            ctx.fillStyle = '#FF0000';
+            ctx.textAlign = 'center';
+
+            // 计算文本位置
+            const text = `${score}`;
+            const textX = canvas.width / 2;
+            const textY = (canvas.height / 2) + 20; // 根据实际图片调整 Y 坐标值，使得文本出现在图片上方
+
+            // 在画布上绘制文本
+            ctx.fillText(`${score}`, canvas.width / 2, canvas.height / 2);
+        };
+
+        // 重新开始游戏
+        function resetGame() {
+            clearTimeout(intervalId); // 清除已有的计时器
+            clearTimeout(character.scaleTimer); // 清除已有的计时器
+            character.scaleTimer = null;
+            intervalId = null;
+            score = 0; // 重置分数
+            scoreElement.innerText = score;
+            character.x = 0;// 重置角色状态
+            character.y = canvas.height - groundHeight - characterHeight;
+            character.speed = 5
+            character.vy = 0;
+            character.scale = 1;
+            character.scaleTimer = null;
+            character.image = characterSprite;
+            character.jumpImg = characterJumpImg;
+            character.isEnlarged = false;
+            character.jumping = false;
+            scaleCount = 0;
+    scaleDownCount = 0
+    updateScaleCountDisplay(); 
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+            backgroundMusic.play();
+            balls = []; // 重置小球状态
+            powerups = []; // 重置道具状态
+            for (let i = 0; i < ballCount; i++) {
+                createBall();
+            }
+            resetButton.style.display = 'none';
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            startGame(); // 自动开始游戏
+
+            for (let i = 0; i < powerupCount; i++) {
+                if (Math.random() < 0.5) { // 可以根据需要调整道具出现概率
+                    createPowerup();
+                }
+            }
+        }
+        // 初始化游戏
+        function init() {
+            startButton.style.display = 'block';
+            resetButton.style.display = 'none';
+            updateScaleCountDisplay();
+        }
+        init();
+
+        // 监听键盘事件
+        let keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // 处理按键输入
+        function handleKeys() {
+            if (keys['ArrowRight']) {
+                character.speed = 5;
+            } else if (keys['ArrowLeft']) {
+                character.speed = -5;
+            } else {
+                character.speed = 0;
+            }
+
+            if (keys['ArrowUp'] && !character.jumping) {
+                character.vy = -character.jumpStrength;
+                jumpSound.currentTime = 0;
+                jumpSound.play();
+                if (scaleCount > 0) {
+                    character.image = characterEnlargeJumpImg;
+                } else {
+                    character.image = characterJumpImg;
+                }
+                character.jumping = true;
+            }
+
+
+        }
+        function checkPowerupCount() {
+            while (powerups.length < powerupCount) {
+                createPowerup();
+            }
+        }
+
+
+        // 更新游戏画面
+        function update() {
+            // 清除前的画布内容
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 更新角色动画
+            updateCharacterAnimation();
+
+            // 绘制角色
+            drawCharacter();
+
+            if (!isGameOver) {
+                // 更新角色位置
+                character.y += character.vy;
+                character.vy += character.gravity;
+                // 更新角色水平位置
+                character.x += character.speed;
+
+                // 检查角色是否到达左侧边界
+                if (character.x < 0) {
+                    character.x = 0;
+                }
+
+                // 检查角色是否到达右侧边界
+                if (character.x + characterWidth > canvas.width) {
+                    character.x = canvas.width - characterWidth;
+                    character.speed = 0;
+                }
+
+                // 更新道具位置
+                updatePowerups();
+                // 检查道具数量并添加新道具
+                checkPowerupCount();
+                // 碰到地面时停止下落
+                if (character.y > canvas.height - groundHeight - characterHeight * character.scale) {
+                    character.y = canvas.height - groundHeight - characterHeight * character.scale;
+                    character.jumping = false;
+                }
+                // 处理按键输入
+                handleKeys();
+                character.x += character.speed;
+
+                // 更新小球位置
+                updateBalls();
+
+                
+                // 检查碰撞
+                checkCollision();
+
+                //检查角色是什么状态
+                handleLanding();
+            }
+
+            // 绘制游戏元素
+            drawCharacter();
+            drawBalls();
+            drawPowerups();
+            drawScore();
+
+            if (isGameOver) {
+                displayGameOverScore(gameOverScoreBackground);
+
+                // 更新道具位置
+                updatePowerups();
+
+                displayHighScore(); // 在游戏结束时显示最高分
+
+                // 检查道具数量并添加新道具
+                checkPowerupCount();
+            }
+            // 使用 requestAnimationFrame 实现动画
+            animationFrameId = requestAnimationFrame(update);
+
+            // 更新循环中更新分数的显示
+            scoreElement.innerText = score;
+        }
+        function loop() {
+            requestAnimationFrame(loop);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        loop();
+
+    </script>
+</body>
+
+</html>
